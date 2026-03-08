@@ -8,7 +8,7 @@ from skimage.transform import EssentialMatrixTransform
 def add_ones(x):
     return np.concatenate([x,np.ones((x.shape[0],1))],axis=1)
 
-IRt=np.eye(4)
+IRt=np.eye(4) 
 
 # this is pose estimation
 def extractRt(E):
@@ -53,7 +53,7 @@ def match_frames(f1,f2):
 
   # Lowe's ratio test
   ret = []
-  idx1,idx2=[],[]
+  idx1,idx2=[],[] 
 
   for m,n in matches:
     if m.distance < 0.75*n.distance:
@@ -76,7 +76,7 @@ def match_frames(f1,f2):
                           #residual_threshold=1,
                           residual_threshold=0.005,
                           max_trials=200)
-  print(sum(inliers), len(inliers))
+  #print(sum(inliers), len(inliers))
 
   # ignore outliers
   #ret = ret[inliers]

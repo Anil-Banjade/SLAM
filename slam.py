@@ -24,8 +24,8 @@ class Map(object):
 
   def display(self):
     for f in self.frames:
-      print(f.id)
-      print(f.pose)
+      #print(f.id)
+      #print(f.pose)
       print()
 disp=Display(W,H)
 
