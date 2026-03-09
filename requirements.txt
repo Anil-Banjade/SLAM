@@ -1,0 +1,10 @@
+opencv-python
+pysdl2
+pyg20
+scikit-image
+glfw
+PyOpenGL 
+PyOpenGL-accelerate
+pytest 
+matplotlib 
+

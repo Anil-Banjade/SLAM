@@ -11,21 +11,55 @@ def add_ones(x):
 IRt=np.eye(4) 
 
 # this is pose estimation
-def extractRt(E):
-  W = np.array([[0,-1,0],[1,0,0],[0,0,1]],dtype=float)
-  U,d,Vt = np.linalg.svd(E)
-  assert np.linalg.det(U) > 0
-  if np.linalg.det(Vt) < 0:
-    Vt *= -1.0
-  R = np.dot(np.dot(U, W), Vt)
-  if np.sum(R.diagonal()) < 0:
-    R = np.dot(np.dot(U, W.T), Vt)
-  t = U[:, 2]
-  #Rt = np.concatenate([R,t.reshape(3,1)], axis=1)
-  ret=np.eye(4)
-  ret[:3,:3]=R
-  ret[:3,3]=t
-  return ret
+def extractRt(E, pts1, pts2):
+    W = np.array([[0,-1,0],[1,0,0],[0,0,1]])
+    U,_,Vt = np.linalg.svd(E)
+
+    if np.linalg.det(U) < 0:
+        U *= -1
+
+    if np.linalg.det(Vt) < 0:
+        Vt *= -1
+
+    R1 = U @ W @ Vt
+    R2 = U @ W.T @ Vt
+    t  = U[:,2]
+
+    poses = [
+        (R1,  t),
+        (R1, -t),
+        (R2,  t),
+        (R2, -t)
+    ]
+
+    best_pose = None
+    best_count = 0
+
+    for R,t in poses:
+
+        P1 = np.hstack((np.eye(3), np.zeros((3,1))))
+        P2 = np.hstack((R, t.reshape(3,1)))
+
+        pts4d = cv2.triangulatePoints(P1, P2, pts1.T, pts2.T)
+        pts4d /= pts4d[3]
+
+        z1 = pts4d[2]
+        z2 = (R @ pts4d[:3] + t.reshape(3,1))[2]
+
+        valid = np.sum((z1 > 0) & (z2 > 0))
+
+        if valid > best_count:
+            best_count = valid
+            best_pose = (R,t)
+
+    R,t = best_pose
+
+    Rt = np.eye(4)
+    Rt[:3,:3] = R
+    Rt[:3,3]  = t
+
+    return Rt
+
 
 def extract(img):
     orb = cv2.ORB_create()
@@ -74,13 +108,13 @@ def match_frames(f1,f2):
                           #FundamentalMatrixTransform,
                           min_samples=8,
                           #residual_threshold=1,
-                          residual_threshold=0.005,
+                          residual_threshold=0.01,
                           max_trials=200)
   #print(sum(inliers), len(inliers))
 
   # ignore outliers
   #ret = ret[inliers]
-  Rt = extractRt(model.params)
+  Rt = extractRt(model.params, ret[:,0], ret[:,1])
 
   # return
   #return ret, Rt
@@ -92,10 +126,11 @@ class Frame(object):
     self.K = K
     self.Kinv = np.linalg.inv(self.K)
     self.pose=IRt
-
-    pts, self.des = extract(img)
-    self.pts = normalize(self.Kinv, pts)
     
+    pts, self.des = extract(img)
+    self.kps_px=pts
+    self.pts = normalize(self.Kinv, pts)
+     
     self.id=len(mapp.frames)
     mapp.frames.append(self)
 
