@@ -1,6 +1,6 @@
 opencv-python
 pysdl2
-pyg20
+pyg2o
 scikit-image
 glfw
 PyOpenGL 
