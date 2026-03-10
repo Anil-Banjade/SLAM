@@ -1,3 +1,4 @@
+#visualization.py
 from __future__ import annotations 
 from dataclasses import dataclass 
 from typing import Optional 
@@ -9,7 +10,7 @@ try:
     import rerun.blueprint as rrb
     _HAS_RERUN=True 
 
-expect Exception:
+except Exception:
     rr=None 
     rrb=None 
     _HAS_RERUN=False 
@@ -31,17 +32,17 @@ def get_blueprint():
             return None 
         blueprint = rrb.Horizontal(
         rrb.Spatial3DView(name="3D", origin="/world", contents=["$origin/**"]),
-        rrb.Vertical(
-            rrb.Horizontal(
-                rrb.Spatial2DView(name="render", origin="/world/render"),
-                rrb.Spatial2DView(name="gt", origin="/world/gt"),
-            ),
-            rrb.Horizontal(
-                rrb.TimeSeriesView(name="loss", origin="/world/loss"),
-                rrb.TimeSeriesView(name="psnr", origin="/world/psnr"),
-            ),
-        ),
-        column_shares=[7, 3],
+        # rrb.Vertical(
+        #     rrb.Horizontal(
+        #         rrb.Spatial2DView(name="render", origin="/world/render"),
+        #         rrb.Spatial2DView(name="gt", origin="/world/gt"),
+        #     ),
+        #     rrb.Horizontal(
+        #         rrb.TimeSeriesView(name="loss", origin="/world/loss"),
+        #         rrb.TimeSeriesView(name="psnr", origin="/world/psnr"),
+        #     ),
+        # ),
+        # column_shares=[7, 3],
         )
         return rrb.Blueprint(blueprint, collapse_panels=True)
 
@@ -82,12 +83,13 @@ def log_pose(name:str, pose_c2w:np.ndarray)->None:
     R=pose_c2w[:3,:3]
     t=pose_c2w[:3,3]
     q=_mat3_to_quat_xyzw(R)
+    q=q / np.linalg.norm(q)
     rr.log(
             name, 
             rr.Transform3D(
                 translation=t,
                 rotation=rr.datatypes.Quaternion(xyzw=q),
-                form_parent=True,
+                from_parent=True,
                 ),
         )
 
@@ -119,17 +121,83 @@ def log_scalars(loss: Optional[float] = None, psnr: Optional[float] = None) -> N
     if psnr is not None:
         rr.log("/world/psnr", rr.Scalar(float(psnr)))
 
-def log_points(name, pts):
+def log_points(name, pts, colors=None):
         if not _HAS_RERUN:
             return 
         if pts is None or pts.size==0:
             return 
-        rr.log(name, rr.Points3D(pts.astype(np.float32)))
+        rr.log(
+            name, 
+            rr.Points3D(pts.astype(np.float32),
+                        colors=colors
+                )
+            ) 
 
 
-    
+def log_trajectory(name, traj):
+    if not _HAS_RERUN:
+        return
+    if len(traj) < 2:
+        return
+
+    rr.log(
+        name,
+        rr.LineStrips3D(
+            [traj.astype(np.float32)],
+            colors=[[255, 0, 0]]
+        )
+    )
+
+    rr.log(
+        name+"_points",
+        rr.Points3D(
+            traj.astype(np.float32),
+            colors=[0,0,255],
+            radii=0.02
+        )
+    )
     
             
 
 
+def log_camera_frustum(name, pose_c2w, K, width, height, scale=0.2):
+    if not _HAS_RERUN:
+        return
 
+    fx = K[0,0]
+    fy = K[1,1]
+    cx = K[0,2]
+    cy = K[1,2]
+
+    # compute frustum corners in camera frame
+    z = scale
+
+    corners = np.array([
+        [(0-cx)/fx*z, (0-cy)/fy*z, z],
+        [(width-cx)/fx*z, (0-cy)/fy*z, z],
+        [(width-cx)/fx*z, (height-cy)/fy*z, z],
+        [(0-cx)/fx*z, (height-cy)/fy*z, z],
+    ])
+
+    cam_center = np.zeros((1,3))
+
+    pts = np.vstack([cam_center, corners])
+
+    
+    R = pose_c2w[:3,:3]
+    t = pose_c2w[:3,3]
+
+    pts_world = (R @ pts.T).T + t
+
+    lines = [
+        [0,1],[0,2],[0,3],[0,4],
+        [1,2],[2,3],[3,4],[4,1]
+    ]
+
+    rr.log(
+        name,
+        rr.LineStrips3D(
+            [pts_world[[i,j]] for i,j in lines],
+            colors=[0,255,0]
+        )
+    )

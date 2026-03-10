@@ -1,3 +1,4 @@
+#frame.py
 import numpy as np
 import cv2
 from skimage.measure import ransac
@@ -108,13 +109,17 @@ def match_frames(f1,f2):
                           #FundamentalMatrixTransform,
                           min_samples=8,
                           #residual_threshold=1,
-                          residual_threshold=0.01,
+                          residual_threshold=0.005,
                           max_trials=200)
   #print(sum(inliers), len(inliers))
+  
 
   # ignore outliers
-  #ret = ret[inliers]
+  ret = ret[inliers]
+  
   Rt = extractRt(model.params, ret[:,0], ret[:,1])
+#   Rt = extractRt(model.params, ret[:,0], ret[:,1])
+
 
   # return
   #return ret, Rt
@@ -126,6 +131,7 @@ class Frame(object):
     self.K = K
     self.Kinv = np.linalg.inv(self.K)
     self.pose=IRt
+    self.img=img
     
     pts, self.des = extract(img)
     self.kps_px=pts

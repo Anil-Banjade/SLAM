@@ -1,3 +1,4 @@
+#pnp_tracker.py
 from __future__ import annotations 
 from dataclasses import dataclass 
 from typing import Optional, List, Tuple 
@@ -10,6 +11,8 @@ from frame import Frame, match_frames, IRt
 class MapPoint:
     xyz: np.ndarray
     desc: np.ndarray 
+    
+    color:np.ndarray
 
 class PnPConfig:
     ratio_test = 0.75
@@ -21,13 +24,14 @@ class PnPConfig:
     min_pnp_inliers = 20
     min_depth = 0.0
     min_homog_w = 5e-3
+    
+    n_init_frames=8
 
-def triangulate(pose1_c2w, pose2_c2w, pts1, pts2):
-    # cv2.triangulatePoints strictly requires World-to-Camera matrices
-    P1 = np.linalg.inv(pose1_c2w)[:3]
-    P2 = np.linalg.inv(pose2_c2w)[:3]
-    pts1 = pts1.T
-    pts2 = pts2.T
+def triangulate(pose1_c2w, pose2_c2w, pts1, pts2, K):
+    P1 = K @ np.linalg.inv(pose1_c2w)[:3]
+    P2 = K @ np.linalg.inv(pose2_c2w)[:3]
+    pts1 = pts1.T.astype(np.float32)
+    pts2 = pts2.T.astype(np.float32)
     pts4d = cv2.triangulatePoints(P1, P2, pts1, pts2)
     return pts4d.T
 
@@ -36,19 +40,33 @@ class EpipolarAndPnP:
         self.K = K.astype(np.float32)
         self.conf = conf or PnPConfig()
         self.map_points = []
+        
 
     def _add_points_from_two_view(self, f_new, f_prev, idx_new, idx_prev):
-        pts4d = triangulate(f_new.pose, f_prev.pose, f_new.pts[idx_new], f_prev.pts[idx_prev])
+        pts4d = triangulate(f_prev.pose, f_new.pose, f_prev.kps_px[idx_prev], f_new.kps_px[idx_new], self.K)
+        
+        
+        if not np.all(np.isfinite(pts4d)):
+            return
+        w_vals = pts4d[:, 3]
+        safe = np.abs(w_vals) > self.conf.min_homog_w
+        if not np.any(safe):
+            return
+        
+        pts4d = pts4d[safe]
+        idx_new  = idx_new[safe]     
+        idx_prev = idx_prev[safe]
+        
+        
         pts4d /= pts4d[:, 3:]
         pts3d = pts4d[:, :3]
         
-        # Transform points back to the new camera frame to check true depth
         w2c_new = np.linalg.inv(f_new.pose)
         pts_cam = (w2c_new[:3, :3] @ pts3d.T).T + w2c_new[:3, 3]
         
         good = (
-            (np.abs(pts4d[:, 3]) > self.conf.min_homog_w) &
-            (pts_cam[:, 2] > 0) &  # Check Camera Z, NOT World Z
+            np.all(np.isfinite(pts3d), axis=1) &       
+            (pts_cam[:, 2] > 0) &
             (np.abs(pts3d[:, 0]) < 1000) &
             (np.abs(pts3d[:, 1]) < 1000) &
             (np.abs(pts3d[:, 2]) < 1000)
@@ -59,7 +77,17 @@ class EpipolarAndPnP:
         for i in np.where(good)[0]:
             xyz = pts3d[i].astype(np.float32)
             desc = f_new.des[idx_new[i]].copy()
-            self.map_points.append(MapPoint(xyz=xyz, desc=desc))
+            
+            px = f_new.kps_px[idx_new[i]].astype(int)
+            x,y = px
+
+            if 0 <= x < f_new.img.shape[1] and 0 <= y < f_new.img.shape[0]:
+                color = f_new.img[y,x]
+            else:
+                color = np.array([255,255,255])
+            self.map_points.append(MapPoint(xyz=xyz, desc=desc, color=color))
+            if len(self.map_points) > 50000:
+                self.map_points = self.map_points[-30000:]
 
     def _pnp(self, f, guess_pose):
         if f.des is None or len(self.map_points) < self.conf.min_pnp_matches:
@@ -96,7 +124,6 @@ class EpipolarAndPnP:
         use_guess = False 
 
         if guess_pose is not None:
-            # guess_pose is W2C, which is correct for cv2.solvePnPRansac
             R0 = guess_pose[:3, :3].astype(np.float32)
             t0 = guess_pose[:3, 3].astype(np.float32)
             rvec, _ = cv2.Rodrigues(R0)
@@ -117,18 +144,58 @@ class EpipolarAndPnP:
             flags=cv2.SOLVEPNP_ITERATIVE, 
         )
 
-        if (not ok) or (inliers is None) or (len(inliers) < self.conf.min_pnp_matches):
+        if (not ok) or (inliers is None) or (len(inliers) < self.conf.min_pnp_inliers):
             return False, None, 0
         
         R, _ = cv2.Rodrigues(rvec)
-        pose = np.eye(4, dtype=np.float32)
-        pose[:3, :3] = R.astype(np.float32)
-        pose[:3, 3] = tvec.reshape(-1).astype(np.float32)
+        pose = np.eye(4, dtype=np.float64)
+        pose[:3, :3] = R.astype(np.float64)
+        pose[:3, 3] = tvec.reshape(-1).astype(np.float64)
 
-        # Invert to return a Camera-to-World pose
         pose = np.linalg.inv(pose)
 
         return True, pose, int(len(inliers))
+    
+    
+    
+    def _recover_scale_from_map(self, f_prev, f_new, Rt_unit):
+    
+        if len(self.map_points) < 10:
+            return Rt_unit
+
+        w2c_prev = np.linalg.inv(f_prev.pose)
+        mp_xyz = np.array([p.xyz for p in self.map_points], dtype=np.float32)
+        pts_cam = (w2c_prev[:3, :3] @ mp_xyz.T).T + w2c_prev[:3, 3]
+        
+        visible = pts_cam[:, 2] > 0.1
+        if np.sum(visible) < 5:
+            return Rt_unit
+
+        pts_cam_vis = pts_cam[visible]
+
+        median_depth = np.median(pts_cam_vis[:, 2])
+        if median_depth <= 0:
+            return Rt_unit
+
+        target_baseline = np.clip(median_depth * 0.02, 0.01, 2.0)
+
+        Rt_scaled = Rt_unit.copy()
+        Rt_scaled[:3, 3] *= target_baseline
+        return Rt_scaled
+
+    def _renormalize_pose(self,pose: np.ndarray) -> np.ndarray:
+        R = pose[:3, :3]
+        U, _, Vt = np.linalg.svd(R)
+        pose[:3, :3] = U @ Vt          
+        return pose
+
+
+    def _is_pose_valid(self,pose: np.ndarray) -> bool:
+        if not np.all(np.isfinite(pose)):
+            return False
+        if np.linalg.norm(pose[:3, 3]) > 1e4:   
+            return False
+        return True
 
     def track(self, frames):
         f = frames[-1]
@@ -137,26 +204,34 @@ class EpipolarAndPnP:
             return f.pose, False, "init-epi"
 
         f_prev = frames[-2]
+        
+        
+        still_initializing = (
+        f.id < self.conf.n_init_frames or
+        len(self.map_points) < self.conf.min_pnp_matches
+        )
 
-        if f.id == 1 or len(self.map_points) < self.conf.min_pnp_matches:
+        if still_initializing:
             idx_new, idx_prev, Rt = match_frames(f, f_prev)
-            # f.pose must be Camera-to-World
-            f.pose = f_prev.pose @ np.linalg.inv(Rt)
+            candidate = f_prev.pose @ Rt
+            candidate = self._renormalize_pose(candidate)          
+            f.pose = candidate if self._is_pose_valid(candidate) else f_prev.pose.copy()
             self._add_points_from_two_view(f, f_prev, idx_new, idx_prev)
             return f.pose, True, "init-epi"
         
-        # PnP needs a World-to-Camera guess
         guess_w2c = np.linalg.inv(f_prev.pose)
         ok, pose, _ninliers = self._pnp(f, guess_pose=guess_w2c)
         
-        if ok and pose is not None:
-            f.pose = pose # _pnp correctly outputs C2W
+        if ok and pose is not None and self._is_pose_valid(pose):
+            f.pose = pose 
             idx_new, idx_prev, _Rt = match_frames(f, f_prev)
             self._add_points_from_two_view(f, f_prev, idx_new, idx_prev)
             return f.pose, True, "pnp"
 
         idx_new, idx_prev, Rt = match_frames(f, f_prev)
-        # Fallback must also maintain the C2W standard
-        f.pose = f_prev.pose @ np.linalg.inv(Rt)
+        Rt_scaled = self._recover_scale_from_map(f_prev, f, Rt)
+        candidate = f_prev.pose @ Rt_scaled
+        candidate = self._renormalize_pose(candidate)              
+        f.pose = candidate if self._is_pose_valid(candidate) else f_prev.pose.copy()
         self._add_points_from_two_view(f, f_prev, idx_new, idx_prev)
         return f.pose, True, "epi-fallback"

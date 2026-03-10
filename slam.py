@@ -14,7 +14,7 @@ disp3d=Display3d()
 
 W=1280//2
 H=720//2
-F=255
+F=700
 K=np.array(([F,0,W//2],[0,F,H//2],[0,0,1]))
 
 tracker=EpipolarAndPnP(K)
