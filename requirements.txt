@@ -7,4 +7,5 @@ PyOpenGL
 PyOpenGL-accelerate
 pytest 
 matplotlib 
+rerun-sdk
 
