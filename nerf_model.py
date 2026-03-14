@@ -106,8 +106,10 @@ class NeRFRenderConfig:
     H: int
     W: int
     focal: float
-    N_samples: int = 64
-    chunk: int = 1024 * 32
+    #N_samples: int = 64
+    N_samples:int=32
+    #chunk: int = 1024 * 32
+    chunk:int=512
     device: str = "cuda"
 
 

@@ -7,14 +7,14 @@ def _skew(w):
     O=torch.zeros_like(wx)
     return torch.stack(
         [
-            torch.stack([0, -wz, wy], dim=-1),
+            torch.stack([O, -wz, wy], dim=-1),
             torch.stack([wz, O, -wx], dim=-1),
             torch.stack([-wy, wx, O], dim=-1),
         ],
         dim=-2,
     )
 
-def so3_exp(w, eps):
+def so3_exp(w, eps=1e-8):
     theta=torch.linalg.norm(w, dim=-1, keepdim=True)
     W=_skew(w)
     theta2=theta*theta
@@ -26,7 +26,7 @@ def so3_exp(w, eps):
 
     return R
 
-def se3_exp(xi, eps):
+def se3_exp(xi, eps=1e-8):
     w=xi[...,:3]
     v=xi[...,3:]
 

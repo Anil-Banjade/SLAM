@@ -5,7 +5,7 @@ import numpy as np
 
 class VideoFrame:
     def __init__(self, image, pose_c2w, intrinsics, index):
-        assert image.ndim==3 and image.shape[2] in (3,4):
+        assert image.ndim==3 and image.shape[2] in (3,4)
         assert pose_c2w.shape==(4,4)
         assert intrinsics.shape == (3, 3)
 
@@ -28,8 +28,8 @@ class TrackedSequence:
     def __getitem__(self,idx:int)->VideoFrame:
         return self.frames[idx]
 
-def iterate_video(video_path:Path, resize_hw:Tuple[int, int]|None=None)-> Iterator[np.ndarray]
-    cap=cv2.videoCapture(str(video_path))
+def iterate_video(video_path:Path, resize_hw:Tuple[int, int]|None=None)-> Iterator[np.ndarray]:
+    cap=cv2.VideoCapture(str(video_path))
     if not cap.isOpened():
         raise RuntimeError(f"Could not load video: {video_path}")
     try:
