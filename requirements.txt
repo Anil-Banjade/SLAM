@@ -1,6 +1,5 @@
 opencv-python
 pysdl2
-pyg2o
 scikit-image
 glfw
 PyOpenGL 
