@@ -127,10 +127,14 @@ class Frontend(mp.Process):
         return pose, pts, cols, img_bgr, is_kf 
 
     def _preview_matplotlib(self, render_rgb_u8: np.ndarray | None, gt_rgb_u8: np.ndarray | None) -> None:
+        """
+        In notebook / Colab, figures created in a multiprocessing child process
+        don't show inline. Instead, save each preview to disk so you can open
+        them from the file browser.
+        """
         if render_rgb_u8 is None and gt_rgb_u8 is None:
             return
 
-        # Colab / notebook-friendly display
         plt.figure(figsize=(10, 4))
         n_cols = 0
         if render_rgb_u8 is not None:
@@ -153,7 +157,15 @@ class Frontend(mp.Process):
             plt.axis("off")
 
         plt.tight_layout()
-        plt.show()
+        # Save to disk instead of relying on inline display from a child process
+        import os, time
+        out_dir = os.path.join("nerfslam_outputs", "previews")
+        os.makedirs(out_dir, exist_ok=True)
+        ts = int(time.time() * 1000)
+        out_path = os.path.join(out_dir, f"preview_{ts}.png")
+        plt.savefig(out_path)
+        plt.close()
+        print(f"[NeRF] saved preview to {out_path}")
 
     def _handle_backend_message(self, msg):
         match msg:
