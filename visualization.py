@@ -117,9 +117,9 @@ def log_scalars(loss: Optional[float] = None, psnr: Optional[float] = None) -> N
     if not _HAS_RERUN:
         return
     if loss is not None:
-        rr.log("/world/loss", rr.Scalar(float(loss)))
+        rr.log("/world/loss", rr.Scalars(float(loss)))
     if psnr is not None:
-        rr.log("/world/psnr", rr.Scalar(float(psnr)))
+        rr.log("/world/psnr", rr.Scalars(float(psnr)))
 
 def log_points(name, pts, colors=None):
         if not _HAS_RERUN:
