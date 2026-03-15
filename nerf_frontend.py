@@ -1,28 +1,30 @@
 from __future__ import annotations 
 from dataclasses import dataclass
-from pathlib import Path 
-from threading import Event 
-from typing import Optional 
+from pathlib import Path
+from threading import Event
+from typing import Optional
 
-import cv2 
+import cv2
 import numpy as np
+import matplotlib.pyplot as plt
 
-import torch.multiprocessing as mp 
-from data import VideoFrame 
-from messages import BackendMessage, FrontendMessage 
+import torch.multiprocessing as mp
+from data import VideoFrame
+from messages import BackendMessage, FrontendMessage
 
-from frame import Frame 
-from pnp_tracker import EpipolarAndPnP, PnPConfig 
-from visualization import (VizConfig,
-        init_viz,
-        log_camera_pinhole,
-        log_images,
-        log_pose,
-        log_points,
-        log_scalars,
-        log_trajectory,
-        log_camera_frustum,
-    )
+from frame import Frame
+from pnp_tracker import EpipolarAndPnP, PnPConfig
+from visualization import (
+    VizConfig,
+    init_viz,
+    log_camera_pinhole,
+    log_images,
+    log_pose,
+    log_points,
+    log_scalars,
+    log_trajectory,
+    log_camera_frustum,
+)
 
 def rotation_angle_deg(R:np.ndarray):
     tr=np.trace(R[:3, :3])
@@ -124,6 +126,35 @@ class Frontend(mp.Process):
 
         return pose, pts, cols, img_bgr, is_kf 
 
+    def _preview_matplotlib(self, render_rgb_u8: np.ndarray | None, gt_rgb_u8: np.ndarray | None) -> None:
+        if render_rgb_u8 is None and gt_rgb_u8 is None:
+            return
+
+        # Colab / notebook-friendly display
+        plt.figure(figsize=(10, 4))
+        n_cols = 0
+        if render_rgb_u8 is not None:
+            n_cols += 1
+        if gt_rgb_u8 is not None:
+            n_cols += 1
+        col_idx = 1
+
+        if render_rgb_u8 is not None:
+            plt.subplot(1, n_cols, col_idx)
+            plt.imshow(render_rgb_u8)
+            plt.title("NeRF render")
+            plt.axis("off")
+            col_idx += 1
+
+        if gt_rgb_u8 is not None:
+            plt.subplot(1, n_cols, col_idx)
+            plt.imshow(gt_rgb_u8)
+            plt.title("Ground truth")
+            plt.axis("off")
+
+        plt.tight_layout()
+        plt.show()
+
     def _handle_backend_message(self, msg):
         match msg:
             case (BackendMessage.SYNC, payload):
@@ -144,8 +175,15 @@ class Frontend(mp.Process):
                     if psnr is not None:
                         parts.append(f"psnr={psnr:.2f}")
                     print("       ", " ".join(parts))
-                log_scalars(loss, psnr)
-                log_images(payload.get("render_rgb_u8"), payload.get("gt_rgb_u8"))
+                # Rerun visualization if enabled, otherwise fallback to matplotlib preview
+                if self.conf.enable_rerun:
+                    log_scalars(loss, psnr)
+                    log_images(payload.get("render_rgb_u8"), payload.get("gt_rgb_u8"))
+                else:
+                    self._preview_matplotlib(
+                        payload.get("render_rgb_u8"),
+                        payload.get("gt_rgb_u8"),
+                    )
             case (BackendMessage.CHECKPOINT, path_str):
                 print(f"Backend checkpoint : {path_str}")
             case (BackendMessage.COMPLETED, _):

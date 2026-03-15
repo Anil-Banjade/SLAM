@@ -41,7 +41,7 @@ class BackendConfig:
     enable_pose_refinement:bool=True 
     pose_lr:float=2e-3 
     pose_reg_weight=2e-3
-    preview_every_steps:int=200 
+    preview_every_steps:int=1000 
 
 class Backend(mp.Process):
     def __init__(
