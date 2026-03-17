@@ -35,8 +35,8 @@ class BackendConfig:
     warmup_steps:int=200
     steps_per_keyframe:int=200
     steps_per_sync:int=50
-    batch_size:int=256
-    n_samples:int=32 
+    batch_size:int=8192
+    n_samples:int=64
     lr:float=5e-4 
     enable_pose_refinement:bool=True 
     pose_lr:float=2e-3 
