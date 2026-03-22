@@ -211,6 +211,13 @@ class Frontend(mp.Process):
         if not cap.isOpened():
             raise RuntimeError(f"Couldn't open video: {self.conf.video}")
 
+        fps = cap.get(cv2.CAP_PROP_FPS)
+        if fps is None or not np.isfinite(fps) or fps < 1.0 or fps > 240.0:
+            fps = 30.0
+        dt = 1.0 / float(fps)
+        self.tracker.conf.kalman_dt = dt
+        self.tracker.kf.set_dt(dt)
+
         self.to_backend.put((FrontendMessage.REQUEST_INIT, {"K":self.K, "W":self.W, "H":self.H}))
 
         try:

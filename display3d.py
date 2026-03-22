@@ -70,26 +70,39 @@ class Display3d:
             else:
                 self.poses = np.zeros((0, 4, 4))
 
-    def filter_points_for_display(self, points, latest_cam, max_points=5000):
+    def filter_points_for_display(self, points, latest_cam, scene_scale=10.0, max_points=5000):
         """Filter and sample points to show scene structure (road, buildings, etc.)"""
         if len(points) == 0:
             return points
         
         # Filter points near the trajectory (road area)
         if len(self.poses) > 0:
-            # Get points within reasonable distance of trajectory
             trajectory_points = np.array([pose[:3, 3] for pose in self.poses if pose.shape == (4, 4)])
             if len(trajectory_points) > 0:
-                # For each point, find distance to nearest trajectory point
-                from scipy.spatial.distance import cdist
+                # Subsample trajectory so pairwise distance checks stay cheap
+                if len(trajectory_points) > 300:
+                    step = max(1, len(trajectory_points) // 300)
+                    trajectory_points = trajectory_points[::step]
+                # Proximity in the same arbitrary units as the SLAM map; scale with scene size
+                # so narrow monocular reconstructions still show structure around the path.
+                proximity = max(30.0, 0.14 * float(scene_scale))
                 try:
+                    from scipy.spatial.distance import cdist
+
                     distances = cdist(points, trajectory_points)
                     min_distances = np.min(distances, axis=1)
-                    # Keep points within 30 units of trajectory (road area)
-                    near_trajectory = min_distances < 30.0
-                    points = points[near_trajectory]
-                except:
-                    pass  # If scipy not available, use all points
+                except Exception:
+                    # Pure numpy fallback (no SciPy): chunk over map points
+                    tp = trajectory_points.astype(np.float64)
+                    pts = points.astype(np.float64)
+                    min_distances = np.empty(len(pts), dtype=np.float64)
+                    chunk = 2000
+                    for s in range(0, len(pts), chunk):
+                        e = min(s + chunk, len(pts))
+                        diff = pts[s:e, None, :] - tp[None, :, :]
+                        min_distances[s:e] = np.sqrt(np.min(np.sum(diff * diff, axis=2), axis=1))
+                near_trajectory = min_distances < proximity
+                points = points[near_trajectory]
         
         # If still too many points, randomly sample
         if len(points) > max_points:
@@ -273,7 +286,7 @@ class Display3d:
             center, scale, latest_cam, latest_dir = self.compute_bounds(points, poses)
             
             # Filter points for better visualization
-            display_points = self.filter_points_for_display(points, latest_cam)
+            display_points = self.filter_points_for_display(points, latest_cam, scene_scale=scale)
             
             # Debug output every 300 frames
             frame_count += 1
