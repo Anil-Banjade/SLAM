@@ -56,5 +56,12 @@ def draw_matches(img1, img2, pts1, pts2, color=(0, 255, 0), radius=5, thickness=
 
         # Draw line connecting points
         cv2.line(matched_img, (x1, y1), (x2_shifted, y2), color, thickness)
-
+    
+    plt.figure()
+    plt.imshow(matched_img)
+    plt.title(f"Feature Matching from plot_utils")
+    plt.show(block=False)
+    input()
+    plt.close()
+    
     return matched_img
