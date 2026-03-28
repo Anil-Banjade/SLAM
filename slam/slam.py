@@ -12,8 +12,10 @@ import sys
 
 from map import Map, MapPoint, Frame
 from utils import o3d_vis
+from collections import deque
+from optimization.bundle_adjustment import Ceres_solver
 
-def process_frame(img, K, mapp, tracker, optimzer = None):
+def process_frame(img, K, mapp, tracker, sliding_window_frames, optimzer = None):
     frame = Frame(mapp, img, K)
     pose, tracked_status, mode_used = tracker.track(mapp.frames)
 
@@ -21,10 +23,14 @@ def process_frame(img, K, mapp, tracker, optimzer = None):
     print("--------------------------------------------")
     frame.pose = pose
 
+    sliding_window_frames.append(frame)
+    
+
 def main(K):
     mapp = Map()
     tracker = EpipolarAndPnP(K, mapp)
-    #optimizer...
+    sliding_window_frames = deque(maxlen=6)
+    optimzer = Ceres_solver(K)
 
     parser = argparse.ArgumentParser(description="SLAM modes")
 
@@ -55,13 +61,23 @@ def main(K):
                 img_path = os.path.join(image_folder, img_file)
                 img = cv2.imread(img_path)
                 if img is not None:
-                    process_frame(img, K, mapp, tracker)
+                    process_frame(img, K, mapp, tracker, sliding_window_frames)
+                    if len(sliding_window_frames) == 6:
+
+                        print("INITIATING LOCAL BUNDLE ADJUSTMENT................")
+
+                        poses, map_pts = optimzer.start(sliding_window_frames)
+                        o3d_vis.visualize_world(poses, map_pts)
+
+
             print("All images processed.")
             print("Poses before local BA") #we would need to start with 6 frame sliding window
                                             #it's okay for now since all processes are abstractly used
             for frame in mapp.frames:
                 print(frame.pose)
-            # print("INITIATING LOCAL BUNDLE ADJUSTMENT................")
+
+            #sliding window of 6 frames
+            
             # P, map_pts = optimzer.start(tracker.obs)
             # print("after local BA")
             # for p in P:
