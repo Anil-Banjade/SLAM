@@ -74,12 +74,12 @@ class Frontend(mp.Process):
         )
 
         self.dist_coeffs = np.array([-0.3, 0.1, 0.0, 0.0, 0.0], dtype=np.float64)
-        self.K, self.roi = cv2.getOptimalNewCameraMatrix(
-            self.K_raw, self.dist_coeffs, (self.W, self.H), alpha=0, newImgSize=(self.W, self.H)
-        )
-        self.map1, self.map2 = cv2.initUndistortRectifyMap(
-            self.K_raw, self.dist_coeffs, None, self.K, (self.W, self.H), cv2.CV_16SC2
-        )
+        # self.K, self.roi = cv2.getOptimalNewCameraMatrix(
+        #     self.K_raw, self.dist_coeffs, (self.W, self.H), alpha=0, newImgSize=(self.W, self.H)
+        # )
+        # self.map1, self.map2 = cv2.initUndistortRectifyMap(
+        #     self.K_raw, self.dist_coeffs, None, self.K, (self.W, self.H), cv2.CV_16SC2
+        # ) 
         
         self.frames:list[Frame]=[]
         self.frame_idx=0
@@ -107,7 +107,7 @@ class Frontend(mp.Process):
     
     def _track_one(self, img_bgr):
         img_bgr=cv2.resize(img_bgr, (self.W, self.H))
-        img_bgr=self._undistort(img_bgr)
+        #img_bgr=self._undistort(img_bgr)
         
         dummy_map=type("Map", (), {"frames":self.frames})
         _f=Frame(dummy_map, img_bgr, self.K)
