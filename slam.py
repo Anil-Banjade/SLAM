@@ -12,9 +12,9 @@ from pnp_tracker import EpipolarAndPnP
 disp3d=Display3d()
 
 
-W=1280//2
-H=720//2
-F=700
+W=1280
+H=720
+F=233.0
 K=np.array(([F,0,W//2],[0,F,H//2],[0,0,1]))
 
 tracker=EpipolarAndPnP(K)
@@ -30,6 +30,8 @@ class Map(object):
       #print(f.pose)
       print()
 disp=Display(W,H)
+
+
 
 mapp=Map()
 class Point(object):

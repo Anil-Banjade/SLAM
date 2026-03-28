@@ -32,17 +32,17 @@ def get_blueprint():
             return None 
         blueprint = rrb.Horizontal(
         rrb.Spatial3DView(name="3D", origin="/world", contents=["$origin/**"]),
-        rrb.Vertical(
-             rrb.Horizontal(
-                 rrb.Spatial2DView(name="render", origin="/world/render"),
-                 rrb.Spatial2DView(name="gt", origin="/world/gt"),
-             ),
-             rrb.Horizontal(
-                 rrb.TimeSeriesView(name="loss", origin="/world/loss"),
-                 rrb.TimeSeriesView(name="psnr", origin="/world/psnr"),
-             ),
-         ),
-        column_shares=[7, 3],
+        # rrb.Vertical(
+        #      rrb.Horizontal(
+        #          rrb.Spatial2DView(name="render", origin="/world/render"),
+        #          rrb.Spatial2DView(name="gt", origin="/world/gt"),
+        #      ),
+        #      rrb.Horizontal(
+        #          rrb.TimeSeriesView(name="loss", origin="/world/loss"),
+        #          rrb.TimeSeriesView(name="psnr", origin="/world/psnr"),
+        #      ),
+        #  ),
+        # column_shares=[7, 3],
         )
         return rrb.Blueprint(blueprint, collapse_panels=True)
 

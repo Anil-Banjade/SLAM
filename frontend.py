@@ -52,22 +52,25 @@ class Frontend:
             [-0.3, 0.1, 0.0, 0.0, 0.0],   # k1, k2, p1, p2, k3
             dtype=np.float64
         )
-        self.K, self.roi = cv2.getOptimalNewCameraMatrix(
-            self.K_raw, self.dist_coeffs,
-            (self.W, self.H), alpha=0,
-            newImgSize=(self.W, self.H)
-        )
-        self.map1, self.map2 = cv2.initUndistortRectifyMap(
-            self.K_raw, self.dist_coeffs, None,
-            self.K, (self.W, self.H), cv2.CV_16SC2
-        )
+        # self.K, self.roi = cv2.getOptimalNewCameraMatrix(
+        #     self.K_raw, self.dist_coeffs,
+        #     (self.W, self.H), alpha=0,
+        #     newImgSize=(self.W, self.H)
+        # )
+        self.K=self.K_raw
+        # self.map1, self.map2 = cv2.initUndistortRectifyMap(
+        #     self.K_raw, self.dist_coeffs, None,
+        #     self.K, (self.W, self.H), cv2.CV_16SC2
+        # )
+        
         
         self.frames:List[Frame]=[]
         self.frame_idx=0
         self.tracker=EpipolarAndPnP(self.K.astype(np.float32), PnPConfig())
         
         self.trajectory=[]
-        #self.disp = Display(self.W, self.H)
+        
+        self.disp = Display(self.W, self.H)
     
     def _undistort(self, img: np.ndarray) -> np.ndarray:
         return cv2.remap(img, self.map1, self.map2, cv2.INTER_LINEAR)
@@ -80,7 +83,7 @@ class Frontend:
             return img
 
         f1 = self.frames[-1]   
-        f2 = self.frames[-2]   
+        f2 = self.frames[-2] 
 
         try:
             idx1, idx2, _ = match_frames(f1, f2)
@@ -88,6 +91,8 @@ class Frontend:
             return img
 
         vis = img.copy()
+        
+        # print(vis.shape)
 
         for i, (i1, i2) in enumerate(zip(idx1, idx2)):
             u1, v1 = denormalize(self.K, f1.pts[i1])
@@ -111,8 +116,10 @@ class Frontend:
         return vis
 
     def _track_one(self, img_bgr):
+        # print(f'original size of image is {img_bgr.shape}')
         img_bgr=cv2.resize(img_bgr, (self.W, self.H))
-        img_bgr = self._undistort(img_bgr)
+        
+        # img_bgr = self._undistort(img_bgr)
         
         dummy_map=type("Map",(), {"frames":self.frames})
         _f=Frame(dummy_map, img_bgr, self.K)
@@ -126,8 +133,10 @@ class Frontend:
             pts=np.zeros((0,3), dtype=np.float32)
             cols=None
             
-        #vis = self._draw_matches(img_bgr)
-        #self.disp.point(vis)  
+        vis = self._draw_matches(img_bgr)
+        # print(img_bgr.shape)
+        # print(vis.shape)
+        self.disp.point(vis)  
         return pose, pts, cols 
     
     
@@ -181,9 +190,22 @@ def main():
     parser.add_argument("--video", type=str, default="test_nyc.mp4")
     parser.add_argument("--max_frames", type=int, default=None)
     parser.add_argument("--pose_out", type=str, default=None)
+    parser.add_argument("--width", type=int, default=1280, help="Resize width; K is built for this resolution.")
+    parser.add_argument("--height", type=int, default=720, help="Resize height; must match focal scale.")
+    parser.add_argument(
+        "--focal",
+        type=float,
+        default=233.0,
+        help="Approximate fx in pixels at (width,height). Wrong value hurts undistortion, PnP, and triangulation.",
+    )
     args=parser.parse_args()
 
-    conf=FrontendConfig(video=Path(args.video))
+    conf=FrontendConfig(
+        video=Path(args.video),
+        width=args.width,
+        height=args.height,
+        focal=args.focal,
+    )
     fe=Frontend(conf)
     fe.run(max_frames=args.max_frames, pose_out=Path(args.pose_out) if args.pose_out else None)
 

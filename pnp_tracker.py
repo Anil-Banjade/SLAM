@@ -195,8 +195,10 @@ class EpipolarAndPnP:
             else:
                 color = np.array([255,255,255])
             self.map_points.append(MapPoint(xyz=xyz, desc=desc, color=color))
-            if len(self.map_points) > 50000:
-                self.map_points = self.map_points[-30000:]
+            if len(self.map_points) > 200000:
+                #self.map_points = self.map_points[-100000:]
+                self.map_points = self.map_points[-120000:]
+
 
     def _pnp(self, f, guess_pose):
         if f.des is None or len(self.map_points) < self.conf.min_pnp_matches:
