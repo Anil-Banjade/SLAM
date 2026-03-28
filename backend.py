@@ -32,8 +32,8 @@ class BackendConfig:
     output_dir:Path=Path("nerfslam_outputs")
     device:str="cuda" if torch.cuda.is_available() else "cpu"
 
-    warmup_steps:int=200
-    steps_per_keyframe:int=200
+    warmup_steps:int=2000
+    steps_per_keyframe:int=2000
     steps_per_sync:int=50
     batch_size:int=8192
     n_samples:int=64
