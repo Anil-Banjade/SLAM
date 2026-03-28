@@ -47,27 +47,41 @@ class EpipolarAndPnP:
             if success:
                 f.pose = pose
                 self.triangulate.add_points_from_pnp(f_prev, f)
+            else: 
+                T_velocity = f_prev.pose @ invert_pose(f[-3].pose)
+                f.pose = T_velocity @ f_prev # implement good fallback with velocity
             return f.pose, success, method 
+    
+    def invert_pose(T):
+        R = T[:3, :3]
+        t = T[:3, 3]
+        T_inv = np.eye(4)
+        T_inv[:3, :3] = R.T
+        T_inv[:3, 3] = -R.T @ t
+        return T_inv
     
     def track_pnp(self, f_prev, f):
         MIN_POINTS = 6
         P3P_THRESHOLD = 20
+
+        PNP_ACCEPTANCE = 20
         dist_coeffs = np.zeros(4) # pts are already distorted at frame.extract_features
         use_guess = False
         rvec_init = np.zeros((3, 1), dtype=np.float64)
         tvec_init = np.zeros((3, 1), dtype=np.float64)
         kp_idx, map_points = match_frame_to_map(f, self.mapp)
 
-        if len(map_points) < MIN_POINTS:
-            print(len)
-            return None, False, "pnp-failed-insufficient-map"
-        
-        if config.args.use_tests:
+        if config.args.show_tests: 
             idx1, idx2, Rt = match_frames(f_prev, f)
-            use_guess = True
-            rvec_init, _ = cv2.Rodrigues(Rt[:3, :3])
-            tvec_init = Rt[:3, 3].reshape(3,1)
-        
+            if config.args.use_tests:
+                use_guess = True
+                rvec_init, _ = cv2.Rodrigues(Rt[:3, :3])
+                tvec_init = Rt[:3, 3].reshape(3,1)
+
+        if len(map_points) < MIN_POINTS:
+            return None, False, "pnp-failed-insufficient-map"
+
+
 
         obj_pts = []
         img_pts = []
@@ -117,7 +131,7 @@ class EpipolarAndPnP:
             return None, False, f"{method}-failed"
 
         if config.args.show_tests:
-            print(f"pnp_tracker: {f.id} ") 
+            print(f"\npnp_tracker: {f.id} ") 
             print(f"inliers: {len(inliers.ravel())}")
             
         inliers = inliers.ravel()

@@ -9,6 +9,7 @@ import config
 from pnp_tracker import EpipolarAndPnP
 import argparse
 import sys
+from multiprocessing import Process
 
 from map import Map, MapPoint, Frame
 from utils import o3d_vis
@@ -20,8 +21,10 @@ def process_frame(img, K, mapp, tracker, sliding_window_frames, optimzer = None)
     pose, tracked_status, mode_used = tracker.track(mapp.frames)
 
     print(f"With {mode_used} tracking {tracked_status}")
-    print("--------------------------------------------")
+    print(frame.id)
+    print(pose)
     frame.pose = pose
+    print("--------------------------------------------")
 
     sliding_window_frames.append(frame)
     
@@ -33,7 +36,6 @@ def main(K):
     optimzer = Ceres_solver(K)
 
     parser = argparse.ArgumentParser(description="SLAM modes")
-
     parser.add_argument("--source", type=str, help="path to frame source")
     parser.add_argument("--use_images", type=bool, default=False, help="Flag to indicate source contains image frames not video")
     parser.add_argument("--use_tests", type=bool, default=False, help="Flag to indicate all tests written to be conducted")
@@ -60,21 +62,49 @@ def main(K):
             for img_file in image_files:
                 img_path = os.path.join(image_folder, img_file)
                 img = cv2.imread(img_path)
-                if img is not None:
-                    process_frame(img, K, mapp, tracker, sliding_window_frames)
-                    if len(sliding_window_frames) == 6:
 
-                        print("INITIATING LOCAL BUNDLE ADJUSTMENT................")
+                if img is not None:
+
+                    process_frame(img, K, mapp, tracker, sliding_window_frames)
+                    
+                    if len(sliding_window_frames) == 6:
+                        #two visualizers for testing
+
+                        if config.args.show_tests:
+
+                            print(f"BEfore BA: ")
+                            poses_before = []
+                            for f in sliding_window_frames:
+                                print(f"Pose of frame {f.id}: \n {f.pose}")
+                                poses_before.append(f.pose.copy())
+                            p1 = Process(target=o3d_vis.visualize_world, args=(poses_before, None))
+
+                        print("INITIATING LOCAL BUNDLE ADJUSTMENT................")                       
 
                         poses, map_pts = optimzer.start(sliding_window_frames)
-                        o3d_vis.visualize_world(poses, map_pts)
+
+                        if config.args.show_tests:
+                            print(f"After BA: ")
+                            poses_after = []
+                            for f in sliding_window_frames:
+                                print(f"Pose of frame {f.id}: \n {f.pose}")
+                                poses_after.append(f.pose)
+
+                            # o3d_vis.visualize_world(poses, map_pts)
+                            p2 = Process(target=o3d_vis.visualize_world, args=(poses_after, map_pts, "After_LOCAL_BA"))
+                            p1.start()
+                            p2.start()
+                            x = input('Close visualizer window?[y/n]')
+                            if x == 'y':
+                                p1.terminate()
+                                p2.terminate()
+                                p1.join()
+                                p2.join()
 
 
             print("All images processed.")
-            print("Poses before local BA") #we would need to start with 6 frame sliding window
+            # print("Poses before local BA") #we would need to start with 6 frame sliding window
                                             #it's okay for now since all processes are abstractly used
-            for frame in mapp.frames:
-                print(frame.pose)
 
             #sliding window of 6 frames
             

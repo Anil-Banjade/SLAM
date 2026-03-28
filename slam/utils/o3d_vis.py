@@ -30,20 +30,19 @@ def visualize_world(poses, map_points=None, window_name="world visualization"):
         geoms.append(pt)
     
     for pose in poses:
-        print("from o3d")
-        print(pose)
         cam = create_camera_frame(pose, size = 1)
         geoms.append(cam)
 
     points = []    
     pcd = o3d.geometry.PointCloud()
 
-    for mp in map_points:
-        points.append(mp.xyz)
+    if map_points is not None:
+        for mp in map_points:
+            points.append(mp.xyz)
 
-    points = np.array(points)
-    pcd.points = o3d.utility.Vector3dVector(points)
-    geoms.append(pcd)
+        points = np.array(points)
+        pcd.points = o3d.utility.Vector3dVector(points)
+        geoms.append(pcd)
     
     print(f"{len(points)} points and {len(poses)} poses")
     o3d.visualization.draw_geometries(geoms, window_name=window_name)

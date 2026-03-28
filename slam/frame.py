@@ -113,7 +113,7 @@ def match_frames(f1, f2):
         print('Total inliers obtained through F and E: ', len(P1), len(P2))
         print('\n\n')
 
-        draw_img = draw_matches(f1.img, f2.img, P1, P2)
+        # draw_img = draw_matches(f1.img, f2.img, P1, P2)
     
     _, R, t, mask = cv2.recoverPose(E, P1, P2, config.K)
     mask = mask.ravel()
@@ -186,8 +186,7 @@ def match_frame_to_map(f, mapp):
     #     kp_indices.append(m.queryIdx)
     #     map_points.append(candidate_mps[m.trainIdx])
     if config.args.show_tests:
-        print(f"Total MapPoints: {len(mapp._map_points)}")
-        print(f"frame {f.id} 2d-3d Correspondance: {len(map_points)} from {len(candidate_mps)}")
-    breakpoint()    
+        print(f"\n Total MapPoints: {len(mapp._map_points)}")
+        print(f"frame {f.id} 2d-3d Correspondance: {len(map_points)} from {len(candidate_mps)} \n")
     
     return kp_indices, map_points

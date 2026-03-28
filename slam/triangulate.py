@@ -74,7 +74,7 @@ class Triangulate:
             self.mapp.add_map_point(mp)
 
         if config.args.show_tests:
-            print("Triangulation AAA \n")
+            print("\nTriangulation frame {f.id} \n")
             print(f"idx_good: {len(idx_prev_good)} good_3d: {len(good_3d)}")
             print("\n\n")
         
