@@ -65,3 +65,26 @@ def draw_matches(img1, img2, pts1, pts2, color=(0, 255, 0), radius=5, thickness=
     plt.close()
     
     return matched_img
+
+
+
+def draw_orb_keypoints(image, points, color=(0, 255, 255), radius=5, thickness=3):
+    output = image.copy()
+
+    points = np.asarray(points)
+
+    # Ensure shape is (N, 2)
+    points = points.reshape(-1, 2)
+
+    for pt in points:
+        x = int(round(float(pt[0])))
+        y = int(round(float(pt[1])))
+
+        cv2.circle(output, (x, y), radius, color, thickness)
+
+    plt.figure()
+    plt.imshow(output)
+    plt.title(f"Features that correspond to 3d Map")
+    plt.show(block=False)
+    input()
+    plt.close()

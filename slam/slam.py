@@ -16,23 +16,23 @@ from utils import o3d_vis
 from collections import deque
 from optimization.bundle_adjustment import Ceres_solver
 
-def process_frame(img, K, mapp, tracker, sliding_window_frames, optimzer = None):
+def process_frame(img, K, mapp, tracker, optimzer = None):
     frame = Frame(mapp, img, K)
+    mapp.sliding_window_frames.append(frame)
     pose, tracked_status, mode_used = tracker.track(mapp.frames)
 
     print(f"With {mode_used} tracking {tracked_status}")
-    print(frame.id)
+    print("frame id: ", frame.id)
     print(pose)
     frame.pose = pose
     print("--------------------------------------------")
 
-    sliding_window_frames.append(frame)
-    
+    # mapp.sliding_window_frames.append(frame)
 
 def main(K):
     mapp = Map()
     tracker = EpipolarAndPnP(K, mapp)
-    sliding_window_frames = deque(maxlen=6)
+    mapp.sliding_window_frames = deque(maxlen=6)
     optimzer = Ceres_solver(K)
 
     parser = argparse.ArgumentParser(description="SLAM modes")
@@ -65,28 +65,28 @@ def main(K):
 
                 if img is not None:
 
-                    process_frame(img, K, mapp, tracker, sliding_window_frames)
+                    process_frame(img, K, mapp, tracker)
                     
-                    if len(sliding_window_frames) == 6:
+                    if len(mapp.sliding_window_frames) == 6:
                         #two visualizers for testing
 
                         if config.args.show_tests:
 
                             print(f"BEfore BA: ")
                             poses_before = []
-                            for f in sliding_window_frames:
+                            for f in mapp.sliding_window_frames:
                                 print(f"Pose of frame {f.id}: \n {f.pose}")
                                 poses_before.append(f.pose.copy())
                             p1 = Process(target=o3d_vis.visualize_world, args=(poses_before, None))
 
                         print("INITIATING LOCAL BUNDLE ADJUSTMENT................")                       
 
-                        poses, map_pts = optimzer.start(sliding_window_frames)
+                        poses, map_pts = optimzer.start(mapp.sliding_window_frames)
 
                         if config.args.show_tests:
                             print(f"After BA: ")
                             poses_after = []
-                            for f in sliding_window_frames:
+                            for f in mapp.sliding_window_frames:
                                 print(f"Pose of frame {f.id}: \n {f.pose}")
                                 poses_after.append(f.pose)
 

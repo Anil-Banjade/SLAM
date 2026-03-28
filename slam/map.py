@@ -1,5 +1,6 @@
 import numpy as np
 from frame import extract_features
+from collections import deque
 
 class MapPoint(object):
     _id_counter = 0
@@ -10,6 +11,7 @@ class MapPoint(object):
         self.color = color 
         self.bad = False
         self.observations: dict[Frame: int] = {} # Frame -> kp_idx i.e keypoint index for correspoindng frame that represents the MapPoint in the frame
+        self.sliding_window_frames = deque(maxlen=6)
     
     def get_descriptors():
         descs = []

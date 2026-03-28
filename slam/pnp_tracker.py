@@ -11,6 +11,8 @@ from frame import match_frames
 from triangulate import Triangulate
 from map import MapPoint
 from frame import match_frame_to_map, match_frames
+from optimization.bundle_adjustment import Ceres_solver
+from utils import o3d_vis
 
 class EpipolarAndPnP:
     def __init__(self, K, mapp, conf = None):
@@ -20,6 +22,7 @@ class EpipolarAndPnP:
         # self.obs = Observations() already defined in Map class
         self.mapp = mapp
         self.triangulate = Triangulate(self.K, self.mapp)
+        self.optimizer = Ceres_solver(self.K)
     
     def track(self, frames):
         f = frames[-1]
@@ -34,7 +37,7 @@ class EpipolarAndPnP:
             if idx_prev is None:
                 return None, False, "fundamental"
             
-            candidate = f_prev.pose @ Rt
+            # candidate = f_prev.pose @ Rt
             candidate = Rt @ f_prev.pose
             f.pose = candidate #pose in world coordiante frame
             self.triangulate.add_points_from_two_view(f_prev, f , idx_prev, idx_new)
@@ -46,13 +49,17 @@ class EpipolarAndPnP:
             pose, success, method = self.track_pnp(f_prev, f)
             if success:
                 f.pose = pose
+                poses_opt, mps_opt = self.optimizer.start(self.mapp.sliding_window_frames)
+                print("DISPLAYING results from optimizer after pnp pose estimation")
+                # o3d_vis.visualize_world(poses_opt, mps_opt)
+                print(f"Before optimization: \n{f.pose} \n After optimization: \n{poses_opt[-1]} \n")
                 self.triangulate.add_points_from_pnp(f_prev, f)
             else: 
                 T_velocity = f_prev.pose @ invert_pose(f[-3].pose)
                 f.pose = T_velocity @ f_prev # implement good fallback with velocity
             return f.pose, success, method 
     
-    def invert_pose(T):
+    def invert_pose(self,T):
         R = T[:3, :3]
         t = T[:3, 3]
         T_inv = np.eye(4)
@@ -73,10 +80,10 @@ class EpipolarAndPnP:
 
         if config.args.show_tests: 
             idx1, idx2, Rt = match_frames(f_prev, f)
-            if config.args.use_tests:
-                use_guess = True
-                rvec_init, _ = cv2.Rodrigues(Rt[:3, :3])
-                tvec_init = Rt[:3, 3].reshape(3,1)
+            # if config.args.use_tests:
+            #     use_guess = True
+            #     rvec_init, _ = cv2.Rodrigues(Rt[:3, :3])
+            #     tvec_init = Rt[:3, 3].reshape(3,1)
 
         if len(map_points) < MIN_POINTS:
             return None, False, "pnp-failed-insufficient-map"

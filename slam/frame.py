@@ -6,7 +6,7 @@ Output: Parallax and keyframe candidates
 import cv2
 import numpy as np
 import config
-from utils.plot_utils import draw_matches
+from utils.plot_utils import draw_matches, draw_orb_keypoints
 '''
 this file is becoming more of a utils, important utils
 '''
@@ -140,7 +140,6 @@ def get_neighbors(f, mapp):
     frames.append(mapp.frames[-3])
     return frames
     
-
 def match_frame_to_map(f, mapp):
     neighbor_frames = get_neighbors(f, mapp)
     
@@ -167,7 +166,7 @@ def match_frame_to_map(f, mapp):
     #Lowe is off but could be on? is it ok? yeah
 
     # matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
-    matches = bf.knnMatch(candidate_descs_arr, f.desc, k=2)
+    matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
 
     #duplicate mapping removal: one mp should be associated with only
 
@@ -175,10 +174,10 @@ def match_frame_to_map(f, mapp):
     map_points = []
 
     for m, n in matches:
-        if m.distance > 0.7 * n.distance:
+        if m.distance < 0.7 * n.distance:
             if m.distance < 40:
-                kp_indices.append(m.trainIdx)
-                map_points.append(candidate_mps[m.queryIdx])
+                kp_indices.append(m.queryIdx)
+                map_points.append(candidate_mps[m.trainIdx])
 
     # for match in matches:
     #     m = match[0]
@@ -186,7 +185,8 @@ def match_frame_to_map(f, mapp):
     #     kp_indices.append(m.queryIdx)
     #     map_points.append(candidate_mps[m.trainIdx])
     if config.args.show_tests:
-        print(f"\n Total MapPoints: {len(mapp._map_points)}")
+        print(f"\nTotal MapPoints: {len(mapp._map_points)}")
         print(f"frame {f.id} 2d-3d Correspondance: {len(map_points)} from {len(candidate_mps)} \n")
-    
+
+    # draw_orb_keypoints(f.img, f.kpx_px[kp_indices]) 
     return kp_indices, map_points

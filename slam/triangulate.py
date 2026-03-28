@@ -6,6 +6,7 @@ import cv2
 import numpy as np
 import config
 from map import MapPoint
+from utils import o3d_vis, plot_utils
 # from slam import MapPoint
 
 class Triangulate:
@@ -66,18 +67,38 @@ class Triangulate:
         idx_prev_good = idx_prev[good_idx]
         idx_new_good  = idx_new[good_idx]
 
+        if config.args.use_tests:
+            mps = []
+            kp1 = []
+            kp2 = []
         color = np.array([0,1,0])
         for id_prev, id_new, xyz in zip(idx_prev_good, idx_new_good, good_3d):
             mp = MapPoint(xyz, color)
+            if config.args.use_tests:
+                mps.append(mp)
+                kp1.append(f_prev.kpx_px[id_prev])
+                kp2.append(f.kpx_px[id_new])
+
             f_prev.add_observation(id_prev, mp)
             f.add_observation(id_new, mp)
             self.mapp.add_map_point(mp)
+        if config.args.use_tests:
+            poses = []
+            poses.append(f_prev.pose)
+            poses.append(f.pose)
+
+            print("Testing points triangualated: ")
+            o3d_vis.visualize_world(poses, mps) 
+            plot_utils.draw_matches(f_prev.img, f.img, kp1, kp2)
+
+
+                
 
         if config.args.show_tests:
             print("\nTriangulation frame {f.id} \n")
             print(f"idx_good: {len(idx_prev_good)} good_3d: {len(good_3d)}")
             print("\n\n")
-        
+        breakpoint() 
 
     def add_points_from_pnp(self, f_prev, f):
         bad = [] #represents bad keypoints to use for triangulatin which is kp that has already been used for triangulation
@@ -101,7 +122,7 @@ class Triangulate:
                 bad.append(i)
             if id_new in f.observations.keys():
                 bad.append(i)
-
+        print(f"len idx_prev: {len(idx_prev)}")
         mask = np.ones(len(idx_new), dtype=bool)
         mask[bad] = False
         idx_prev = np.array(idx_prev)
@@ -109,6 +130,7 @@ class Triangulate:
 
         idx_prev = idx_prev[mask] 
         idx_new = idx_new[mask]
+        breakpoint()
 
         self.add_points_from_two_view(f_prev, f, idx_prev, idx_new)
 
