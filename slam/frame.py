@@ -113,7 +113,7 @@ def match_frames(f1, f2):
         print('Total inliers obtained through F and E: ', len(P1), len(P2))
         print('\n\n')
 
-        # draw_img = draw_matches(f1.img, f2.img, P1, P2)
+        draw_img = draw_matches(f1.img, f2.img, P1, P2)
     
     _, R, t, mask = cv2.recoverPose(E, P1, P2, config.K)
     mask = mask.ravel()

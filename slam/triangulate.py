@@ -98,7 +98,7 @@ class Triangulate:
             print("\nTriangulation frame {f.id} \n")
             print(f"idx_good: {len(idx_prev_good)} good_3d: {len(good_3d)}")
             print("\n\n")
-        breakpoint() 
+        # breakpoint() 
 
     def add_points_from_pnp(self, f_prev, f):
         bad = [] #represents bad keypoints to use for triangulatin which is kp that has already been used for triangulation
@@ -130,7 +130,7 @@ class Triangulate:
 
         idx_prev = idx_prev[mask] 
         idx_new = idx_new[mask]
-        breakpoint()
+        # breakpoint()
 
         self.add_points_from_two_view(f_prev, f, idx_prev, idx_new)
 

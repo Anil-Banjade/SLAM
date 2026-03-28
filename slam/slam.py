@@ -19,7 +19,9 @@ from optimization.bundle_adjustment import Ceres_solver
 def process_frame(img, K, mapp, tracker, optimzer = None):
     frame = Frame(mapp, img, K)
     mapp.sliding_window_frames.append(frame)
-    pose, tracked_status, mode_used = tracker.track(mapp.frames)
+    pose, tracked_status, mode_used = tracker.track(mapp.frames) #Warning: Lack of Keyframe Filtering, if no parallax a None pose is returned. Drop the frame is missing
+    #currently the frames given are very controlled so parallax is confirmed by pre-processing but to process video without pre-processing, Drop and filter keyframes is required
+
 
     print(f"With {mode_used} tracking {tracked_status}")
     print("frame id: ", frame.id)
@@ -70,7 +72,7 @@ def main(K):
                     if len(mapp.sliding_window_frames) == 6:
                         #two visualizers for testing
 
-                        if config.args.show_tests:
+                        if config.args.use_tests:
 
                             print(f"BEfore BA: ")
                             poses_before = []
@@ -83,7 +85,7 @@ def main(K):
 
                         poses, map_pts = optimzer.start(mapp.sliding_window_frames)
 
-                        if config.args.show_tests:
+                        if config.args.use_tests:
                             print(f"After BA: ")
                             poses_after = []
                             for f in mapp.sliding_window_frames:
@@ -128,14 +130,47 @@ def main(K):
 
         print("Total frames:", total_frames)
         while(cap.isOpened()):
-            if args.num_frames is not None and processed >= args.num_frames:
-                print("exiting slam. Processed 2 frames.")
-                break
+            # if args.num_frames is not None and processed >= args.num_frames:
+            #     print("exiting slam. Processed 2 frames.")
+            #     break
             ret,frame = cap.read()
             if ret == True:
 
                 if frame_id % step == 0:
-                    process_frame(frame, K, mapp)
+                    process_frame(frame, K, mapp, tracker)
+                    if len(mapp.sliding_window_frames) == 6:
+                        if config.args.use_tests:
+
+                            print(f"BEfore BA: ")
+                            poses_before = []
+                            for f in mapp.sliding_window_frames:
+                                print(f"Pose of frame {f.id}: \n {f.pose}")
+                                poses_before.append(f.pose.copy())
+                            p1 = Process(target=o3d_vis.visualize_world, args=(poses_before, None))
+
+                        print("INITIATING LOCAL BUNDLE ADJUSTMENT................")                       
+
+                        poses, map_pts = optimzer.start(mapp.sliding_window_frames)
+
+                        if config.args.use_tests:
+                            print(f"After BA: ")
+                            poses_after = []
+                            for f in mapp.sliding_window_frames:
+                                print(f"Pose of frame {f.id}: \n {f.pose}")
+                                poses_after.append(f.pose)
+
+                            # o3d_vis.visualize_world(poses, map_pts)
+                            p2 = Process(target=o3d_vis.visualize_world, args=(poses_after, map_pts, "After_LOCAL_BA"))
+                            p1.start()
+                            p2.start()
+                            x = input('Close visualizer window?[y/n]')
+                            if x == 'y':
+                                p1.terminate()
+                                p2.terminate()
+                                p1.join()
+                                p2.join()
+
+
                     # cv2.imwrite(f"images/{frame_id}.jpg", frame)
                     # print(f"{frame_id} written to ../images")
                     processed +=1
