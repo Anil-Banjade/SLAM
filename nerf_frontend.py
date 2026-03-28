@@ -80,7 +80,7 @@ class Frontend(mp.Process):
         # self.map1, self.map2 = cv2.initUndistortRectifyMap(
         #     self.K_raw, self.dist_coeffs, None, self.K, (self.W, self.H), cv2.CV_16SC2
         # ) 
-        
+        self.K=self.K_raw
         self.frames:list[Frame]=[]
         self.frame_idx=0
         self.tracker=EpipolarAndPnP(self.K.astype(np.float32), PnPConfig())
