@@ -1,6 +1,7 @@
 In comparisoin to our main branch this branch does not support nerf currently but is a reabased version of main to mitigate some errors and experiment with various parameters and combinations.
 
-useful flags:
+### useful flags:
+
 --source path to video or images
 
 --use_images True # if you are using image frames rather than video
