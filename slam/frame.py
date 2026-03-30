@@ -28,7 +28,6 @@ def extract_features(img, K, dist_coeff=config.dist_coeffs):
     
     return pts_undistorted, descs
 
-
 def match_frames(f1, f2):                           
     
     bf = cv2.BFMatcher(cv2.NORM_HAMMING)
@@ -114,6 +113,7 @@ def match_frames(f1, f2):
         print('\n\n')
 
         draw_img = draw_matches(f1.img, f2.img, P1, P2)
+        config.disp.display(draw_img)
     
     _, R, t, mask = cv2.recoverPose(E, P1, P2, config.K)
     mask = mask.ravel()
@@ -162,31 +162,39 @@ def match_frame_to_map(f, mapp):
 
     candidate_descs_arr = np.array(candidate_descs, dtype=np.uint8)
 
-    bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
-    #Lowe is off but could be on? is it ok? yeah
-
-    # matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
-    matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
-
-    #duplicate mapping removal: one mp should be associated with only
-
     kp_indices = []
     map_points = []
 
-    for m, n in matches:
-        if m.distance < 0.7 * n.distance:
+    if config.args.lowe:
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
+        #Lowe is off but could be on? is it ok? yeah
+
+        # matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
+        matches = bf.knnMatch(f.desc, candidate_descs_arr, k=2)
+
+        #duplicate mapping removal: one mp should be associated with only
+
+       
+        for m, n in matches:
+            if m.distance < 0.75 * n.distance:
+                if m.distance < 40:
+                    kp_indices.append(m.queryIdx)
+                    map_points.append(candidate_mps[m.trainIdx])
+
+    else:
+        bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+        matches = bf.match(f.desc, candidate_descs_arr)
+        matches = sorted(matches, key=lambda x: x.distance)
+
+        for m in matches:
             if m.distance < 40:
                 kp_indices.append(m.queryIdx)
                 map_points.append(candidate_mps[m.trainIdx])
 
-    # for match in matches:
-    #     m = match[0]
-    #     if m.distance > 15
-    #     kp_indices.append(m.queryIdx)
-    #     map_points.append(candidate_mps[m.trainIdx])
     if config.args.show_tests:
         print(f"\nTotal MapPoints: {len(mapp._map_points)}")
         print(f"frame {f.id} 2d-3d Correspondance: {len(map_points)} from {len(candidate_mps)} \n")
+        max_dist = max(m.distance for m in matches)
+        print(max_dist)
 
-    # draw_orb_keypoints(f.img, f.kpx_px[kp_indices]) 
     return kp_indices, map_points

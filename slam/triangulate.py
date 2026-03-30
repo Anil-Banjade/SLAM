@@ -33,7 +33,6 @@ class Triangulate:
 
         # Reprojection error for quality filtering
         def reproj_err_per_point(K, pose_3x4, pts3d_w, kpx_px):
-            """Returns per-point reprojection error (N,)"""
             pts_h = np.hstack([pts3d_w, np.ones((len(pts3d_w), 1))])
             proj = (K @ pose_3x4 @ pts_h.T).T   # (N, 3)
             proj /= proj[:, 2:]
@@ -67,6 +66,8 @@ class Triangulate:
         idx_prev_good = idx_prev[good_idx]
         idx_new_good  = idx_new[good_idx]
 
+
+        #use_tests to observe the map points that get added: to observe if a wrong calculation is adding drasticly erronous mp and hence optimizaiton will struggle
         if config.args.use_tests:
             mps = []
             kp1 = []
@@ -95,7 +96,7 @@ class Triangulate:
                 
 
         if config.args.show_tests:
-            print("\nTriangulation frame {f.id} \n")
+            print(f"\nTriangulation frame {f.id} \n")
             print(f"idx_good: {len(idx_prev_good)} good_3d: {len(good_3d)}")
             print("\n\n")
         # breakpoint() 
@@ -122,7 +123,6 @@ class Triangulate:
                 bad.append(i)
             if id_new in f.observations.keys():
                 bad.append(i)
-        print(f"len idx_prev: {len(idx_prev)}")
         mask = np.ones(len(idx_new), dtype=bool)
         mask[bad] = False
         idx_prev = np.array(idx_prev)
@@ -131,6 +131,7 @@ class Triangulate:
         idx_prev = idx_prev[mask] 
         idx_new = idx_new[mask]
         # breakpoint()
+        print(f"Number of points sent for Triangulation: {len(idx_prev)}")
 
         self.add_points_from_two_view(f_prev, f, idx_prev, idx_new)
 

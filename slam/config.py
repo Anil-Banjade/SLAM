@@ -1,4 +1,8 @@
 import numpy as np
+from utils.display import Display
+disp_w = 1400
+disp_h = 600
+disp = Display(disp_w, disp_h)
 K_mobile = np.array([
         [3.14155685e+03, 0.00000000e+00, 2.01474409e+03],
         [0.00000000e+00, 3.13835299e+03, 9.44067665e+02],
@@ -35,9 +39,9 @@ Dist_test_nyc = np.array([
      0.0    # k3
 ])
 
-# K = K_mobile_video
-# dist_coeffs = Dist_mobile_video
+K = K_mobile_video
+dist_coeffs = Dist_mobile_video
 
-K = K_test_nyc_cropped
-dist_coeffs = Dist_test_nyc
+# K = K_test_nyc_cropped
+# dist_coeffs = Dist_test_nyc
 args = None

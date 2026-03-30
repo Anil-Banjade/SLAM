@@ -126,12 +126,15 @@ class Ceres_solver:
                                     [pose_params[fid], point_params[pid]])
 
         # fix first frame to remove gauge freedom
+        if not obs.frames or obs.frames[0] is None:
+            return [], []
+            breakpoint()
         first_fid = id(obs.frames[0])
         problem.set_parameter_block_constant(pose_params[first_fid])
 
         pyceres.solve(self.options, problem, self.summary)
-        print("---------------Ceres Solver---------------")
-        print(self.summary.BriefReport())
+        # print("---------------Ceres Solver---------------")
+        # print(self.summary.BriefReport())
 
         # write results back
         test_frame_poses = []

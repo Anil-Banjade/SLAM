@@ -22,16 +22,16 @@ def create_camera_frame(pose, size=10, color=[1, 1, 0]):
     frame.transform(np.linalg.inv(pose))               # fixed: T -> pose
     return frame
 
-def visualize_world(poses, map_points=None, window_name="world visualization"):
+def visualize_world(poses=None, map_points=None, window_name="world visualization"):
 
     geoms = []
     for mp in additional_axes():
         pt = create_point(mp.xyz, radius = 0.05,color=mp.color.tolist())
         geoms.append(pt)
-    
-    for pose in poses:
-        cam = create_camera_frame(pose, size = 1)
-        geoms.append(cam)
+    if poses is not None: 
+        for pose in poses:
+            cam = create_camera_frame(pose, size = 3)
+            geoms.append(cam)
 
     points = []    
     pcd = o3d.geometry.PointCloud()
@@ -44,7 +44,7 @@ def visualize_world(poses, map_points=None, window_name="world visualization"):
         pcd.points = o3d.utility.Vector3dVector(points)
         geoms.append(pcd)
     
-    print(f"{len(points)} points and {len(poses)} poses")
+    # print(f"{len(points)} points and {len(poses)} poses")
     o3d.visualization.draw_geometries(geoms, window_name=window_name)
 
 
