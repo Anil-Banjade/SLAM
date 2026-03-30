@@ -8,5 +8,5 @@ useful flags:
 --show_tests True # to enable verbose mode on logs and also enable sdl2 viewer
 --display {pose/map_points/all} options to view one of three, sometimes open3d gives very bad scaling so removing one of parameter helps to visualize the output
 
-![Library building of Thapathali campus: camera takes straight line and returns back to original spot local BA barely makes a diff since pnp does it's work pretty well (drift is present, requires graph optimization or global BA( graph optimization should do it](images/library.png)
+![Library building of Thapathali campus: camera takes straight line and returns back to original spot local BA barely makes a diff since pnp does it's work pretty well (drift is present, requires graph optimization or global BA( graph optimization should do it](video_frames/images/library.png)
 ![local bA results when going around a desk, 2 outlier poses at the end, again loop closure should solve it) note: when local BA is off results are very bad](images/desk.png)
