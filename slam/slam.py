@@ -27,27 +27,30 @@ def process_frame(img, K, mapp, tracker, optimzer = None):
     print("frame id: ", frame.id)
     print(pose)
     frame.pose = pose
+    poses = []
     print("--------------------------------------------")
 
     # mapp.sliding_window_frames.append(frame)
 
-def main(K):
+def main(k):
     mapp = Map()
-    tracker = EpipolarAndPnP(K, mapp)
+    tracker = EpipolarAndPnP(k, mapp)
     mapp.sliding_window_frames = deque(maxlen=6)
-    optimzer = Ceres_solver(K)
+    optimzer = Ceres_solver(k)
 
-    parser = argparse.ArgumentParser(description="SLAM modes")
+    parser = argparse.ArgumentParser(description="slam modes")
     parser.add_argument("--source", type=str, help="path to frame source")
-    parser.add_argument("--use_images", type=bool, default=False, help="Flag to indicate source contains image frames not video")
-    parser.add_argument("--use_tests", type=bool, default=False, help="Flag to indicate all tests written to be conducted")
-    parser.add_argument("--fps_divider", type=int, default=-1, help="Factor to divide original fps and decrease fps")
-    parser.add_argument("--show_tests", type=bool, default=False, help="Flag to indicate testing logic included")
+    parser.add_argument("--use_images", type=bool, default=False, help="flag to indicate source contains image frames not video")
+    parser.add_argument("--use_tests", type=bool, default=False, help="flag to indicate all tests written to be conducted")
+    parser.add_argument("--fps_divider", type=int, default=-1, help="factor to divide original fps and decrease fps")
+    parser.add_argument("--show_tests", type=bool, default=False, help="flag to indicate testing logic included")
     parser.add_argument("--lowe", type=bool, default=False, help="to use knn + lowe's")
+    parser.add_argument("--optimize", type=bool, default=False, help="to enable local ba")
+    parser.add_argument("--display", type=str, help='pose/map_points/all: display modes')
 
     args = parser.parse_args()
     config.args = args
-    print("Config Arguments: ")
+    print("config arguments: ")
     print(config.args)
 
     if args.use_images:
@@ -72,8 +75,9 @@ def main(K):
                     if len(mapp.sliding_window_frames) == 6:
                         #two visualizers for testing
 
+                        #use_test to see before and after optimzation of the world
                         if config.args.use_tests:
-
+                            
                             print(f"BEfore BA: ")
                             poses_before = []
                             for f in mapp.sliding_window_frames:
@@ -81,11 +85,11 @@ def main(K):
                                 poses_before.append(f.pose.copy())
                             p1 = Process(target=o3d_vis.visualize_world, args=(poses_before, None))
 
-                        print("INITIATING LOCAL BUNDLE ADJUSTMENT................")                       
-
-                        poses, map_pts = optimzer.start(mapp.sliding_window_frames)
+                        print("INITIATING LOCAL BUNDLE ADJUSTMENT")                       
+                        # poses, map_pts = optimzer.start(mapp.sliding_window_frames)
 
                         if config.args.use_tests:
+
                             print(f"After BA: ")
                             poses_after = []
                             for f in mapp.sliding_window_frames:
@@ -139,6 +143,7 @@ def main(K):
                 if frame_id % step == 0:
                     process_frame(frame, K, mapp, tracker)
                     if len(mapp.sliding_window_frames) == 6:
+
                         if config.args.use_tests:
 
                             print(f"BEfore BA: ")
@@ -149,8 +154,10 @@ def main(K):
                             p1 = Process(target=o3d_vis.visualize_world, args=(poses_before, None))
 
                         print("INITIATING LOCAL BUNDLE ADJUSTMENT................")                       
-
-                        poses, map_pts = optimzer.start(mapp.sliding_window_frames)
+                        print("--------------------------------------------------")
+                        if config.args.optimize:
+                            poses, map_pts = optimzer.start(mapp.sliding_window_frames)
+                        #o3d_vis.visualize_world(poses)
 
                         if config.args.use_tests:
                             print(f"After BA: ")
@@ -187,7 +194,18 @@ def main(K):
         poses.append(frame.pose)
 
     map_points = mapp.map_points
-    o3d_vis.visualize_world(poses, map_points)
+    config.disp.close()
+    if config.args.display == 'pose':
+        print("Displaying all poses: ")
+
+        o3d_vis.visualize_world(poses=poses)
+    elif config.args.display == 'map_points':
+        print("Displaying all map points: ")
+
+        o3d_vis.visualize_world(map_points=map_points)
+    else:
+        print("Displaying all poses and map_points: ")
+        o3d_vis.visualize_world(poses=poses, map_points=map_points)
 
 
 if __name__ == "__main__":

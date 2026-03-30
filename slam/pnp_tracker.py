@@ -49,16 +49,17 @@ class EpipolarAndPnP:
             pose, success, method = self.track_pnp(f_prev, f)
             if success:
                 f.pose = pose
-                poses_opt, mps_opt = self.optimizer.start(self.mapp.sliding_window_frames)
+                if config.args.optimize:
+                    poses_opt, mps_opt = self.optimizer.start(self.mapp.sliding_window_frames)
                 print("DISPLAYING results from optimizer after pnp pose estimation")
                 # o3d_vis.visualize_world(poses_opt, mps_opt)
                 print(f"\nBefore optimization: \n{f.pose} \n\n After optimization: \n{poses_opt[-1]} \n")
                 self.triangulate.add_points_from_pnp(f_prev, f)
             else: 
                 T_velocity = f_prev.pose @ self.invert_pose(frames[-3].pose)
-                breakpoint()
                 f.pose = T_velocity @ f_prev.pose # implement good fallback with velocity
-                poses_opt, mps_opt = self.optimizer.start(self.mapp.sliding_window_frames)
+                if config.args.optimize:
+                    poses_opt, mps_opt = self.optimizer.start(self.mapp.sliding_window_frames)
             return f.pose, success, method 
     
     def invert_pose(self,T):
