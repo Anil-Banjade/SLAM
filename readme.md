@@ -7,7 +7,7 @@ This is a research-oriented framework that combines traditional Monocular Simult
 
 ```bash
 # Clone the repository
-git clone [https://github.com/yourusername/slam-nerf.git](https://github.com/yourusername/slam-nerf.git)
+git clone [https://github.com/yourusername/slam-nerf.git](https://github.com/Anil-Banjade/SLAM/)
 cd slam-nerf
 
 # Install required dependencies
