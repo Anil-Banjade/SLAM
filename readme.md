@@ -8,7 +8,7 @@ This is a research-oriented framework that combines traditional Monocular Simult
 ```bash
 # Clone the repository
 git clone https://github.com/Anil-Banjade/SLAM.git 
-cd slam-nerf
+cd SLAM
 
 # Install required dependencies
 pip install -r requirements.txt
@@ -23,5 +23,5 @@ Running the Pipeline
 To execute the full SLAM-NeRF optimization and reconstruction process:
 
 ```bash
-python -m nerfslam.pipeline --video test_nyc.mp4
+python -m pipeline --video test_nyc.mp4
 ```
